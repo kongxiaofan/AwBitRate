@@ -18,14 +18,16 @@ SOURCES += main.cpp\
     dcrbsthread.cpp \
     decoder/mpeg2frame.cpp \
     decoder/avsframe.cpp \
-    decoder/hevcframe.cpp
+    decoder/hevcframe.cpp \
+    qcustomplot/qcustomplot.cpp
 
 HEADERS  += awbitrate.h \
     dcrbsthread.h \
     include/infor.h \
     decoder/mpeg2frame.h \
     decoder/avsframe.h \
-    decoder/hevcframe.h
+    decoder/hevcframe.h \
+    qcustomplot/qcustomplot.h
 
 FORMS    += awbitrate.ui
 CONFIG   += qaxcontainer

@@ -8,6 +8,7 @@
 #include <QTimer>
 #include "dcrbsthread.h"
 #include "include/infor.h"
+#include "qcustomplot/qcustomplot.h"
 #include <QCoreApplication>
 #include <QVariant>
 #include <QAxBase>
@@ -15,6 +16,7 @@
 #include <QDesktopServices>
 
 #define  BUFF_SIZE 1024*1024
+#define SIZE 15
 
 AwBitRate::AwBitRate(QWidget *parent) :
     QDialog(parent),
@@ -24,6 +26,8 @@ AwBitRate::AwBitRate(QWidget *parent) :
     ui->noEditLB->setText("");
     timer = new QTimer;
     timer->setInterval(100);
+    nOrBitRate = 1000;//设置默认阈值码率，单位bps
+    initPor();
     connect(ui->startBtn, SIGNAL(clicked()), timer, SLOT(start()));
 
 }
@@ -124,6 +128,7 @@ void AwBitRate::on_startBtn_clicked()
     thrd  = new DcrBSThread(file, nFrameRate, isStreamType, (DECODER)decoder);
     connect(thrd, SIGNAL(sendTotalReadBits(qint32)), SLOT(udateProgress(qint32)));
     connect(thrd, SIGNAL(sendInfo(qint32,qint32)), SLOT(showBitRat(qint32,qint32)));
+    connect(thrd, SIGNAL(sendInfo(qint32,qint32)), SLOT(updatePor(qint32,qint32)));
     thrd->start();
 }
 
@@ -141,6 +146,44 @@ void AwBitRate::showBitRat(qint32 second, qint32 bitRate)
 
     QTableWidgetItem *br = new QTableWidgetItem(QString::number(bitRate));
     ui->tableWidget->setItem(second-1, 1, br);
+
+    QTableWidgetItem *diff = new QTableWidgetItem(QString::number(bitRate - nOrBitRate));
+    ui->tableWidget->setItem(second-1, 2, diff);
+}
+
+void AwBitRate::updatePor(qint32 second, qint32 bitRate)
+{
+    int i;
+    for(i=0; i<SIZE-1; i++)
+    {
+        proLabels.replace(i,proLabels.at(i+1));
+        proValues.replace(i, proValues.at(i+1));
+    }
+    proLabels.insert(i, QString("%1").arg(second));
+    proValues.insert(i, bitRate);
+    QVector<double> index(SIZE);
+
+    for(int i=0; i<SIZE; ++i)
+        index[i] = i;
+    bars->setData(index,proValues);
+    ui->proWidget->xAxis->setAutoTicks(false);
+    ui->proWidget->xAxis->setAutoTickLabels(false);
+    ui->proWidget->xAxis->setAutoTickStep(false);
+
+    ui->proWidget->addPlottable(bars);
+    ui->proWidget->rescaleAxes();
+    double wid = ui->proWidget->xAxis->range().upper - ui->proWidget->xAxis->range().lower;
+    double cl  = bars->width() + (1.0*wid - bars->width()*SIZE) / (SIZE - 1);
+
+    QVector<double> coor;
+    for(int i=0; i<SIZE; ++i)
+        coor.append(ui->proWidget->xAxis->range().lower + i*cl+bars->width()/2);
+
+    ui->proWidget->xAxis->setTickVector(coor);
+
+    ui->proWidget->xAxis->setTickVectorLabels(proLabels);
+
+    ui->proWidget->replot();
 }
 
 
@@ -174,6 +217,52 @@ void AwBitRate::on_exportBtn_clicked()
         }
         QMessageBox::information(this,"提示", "Exporting data successful");
     }
+}
 
+void AwBitRate::initPor()
+{
+    proLabels.resize(SIZE);
+    proValues.resize(SIZE);
+    bars=new QCPBars(ui->proWidget->xAxis,ui->proWidget->yAxis);
+    ui->proWidget->xAxis->setAutoTicks(false);
+    ui->proWidget->xAxis->setAutoTickLabels(false);
+    ui->proWidget->xAxis->setAutoTickStep(false);
+    ui->proWidget->replot();
+}
 
+void AwBitRate::updatePor()
+{
+    QVector<QString> labels(SIZE);
+    QVector<double> values(SIZE);
+    for(int i=0; i<SIZE; ++i)
+    {
+        labels[i] = QString("%1s").arg(i);
+        values[i] = 50;
+    }
+
+    QCPBars* bars=new QCPBars(ui->proWidget->xAxis,ui->proWidget->yAxis);
+    QVector<double> index(SIZE);
+
+    for(int i=0; i<SIZE; ++i)
+        index[i] = i;
+    bars->setData(index,values);
+    ui->proWidget->xAxis->setAutoTicks(false);
+    ui->proWidget->xAxis->setAutoTickLabels(false);
+    ui->proWidget->xAxis->setAutoTickStep(false);
+
+    ui->proWidget->addPlottable(bars);
+    ui->proWidget->rescaleAxes();
+
+    double wid = ui->proWidget->xAxis->range().upper - ui->proWidget->xAxis->range().lower;
+    double cl  = bars->width() + (1.0*wid - bars->width()*SIZE) / (SIZE - 1);
+
+    QVector<double> coor;
+    for(int i=0; i<SIZE; ++i)
+        coor.append(ui->proWidget->xAxis->range().lower + i*cl+bars->width()/2);
+
+    ui->proWidget->xAxis->setTickVector(coor);
+
+    ui->proWidget->xAxis->setTickVectorLabels(labels);
+
+    ui->proWidget->replot();
 }

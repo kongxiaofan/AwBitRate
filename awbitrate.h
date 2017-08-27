@@ -6,6 +6,7 @@ class QFile;
 class QFileInfo;
 class QTimer;
 class DcrBSThread;
+class QCPBars;
 
 namespace Ui {
 class AwBitRate;
@@ -18,7 +19,6 @@ class AwBitRate : public QDialog
 public:
     explicit AwBitRate(QWidget *parent = 0);
     ~AwBitRate();
-    //typedef enum{H265 = 1, H264, MPEG2, AVS}DECODER;
     
 private slots:
     void on_openBtn_clicked();
@@ -29,6 +29,8 @@ private slots:
 
     void showBitRat(qint32 second, qint32 bitRate);
 
+    void updatePor(qint32 second, qint32 bitRate);
+
     void on_exportBtn_clicked();
 
 private:
@@ -38,9 +40,14 @@ private:
     QTimer *timer;
     qint32 nTotalSize;
     DcrBSThread *thrd;
+    qint32 nOrBitRate;
+    QVector<QString> proLabels;
+    QVector<double> proValues;
+    QCPBars* bars;
 
 private:
-
+    void initPor();
+    void updatePor();
 
 };
 
