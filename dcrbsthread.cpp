@@ -6,12 +6,12 @@
 #include <QDebug>
 #include <QWaitCondition>
 
-DcrBSThread::DcrBSThread(QFile *fp, qint16 nFrameRate, bool bStream, DECODER decType)
+DcrBSThread::DcrBSThread(QFile *fp, Decoder decoder)
 {
-    frameRate = nFrameRate;
+    frameRate = decoder.nFrameRate;
     file = fp;
-    type = decType;
-    bStreamType = bStream;
+    type = decoder.de;
+    bStreamType = decoder.isStreamType;
 }
 
 
@@ -88,15 +88,15 @@ void DcrBSThread::decribeMpeg2Info(const qint16 nFrameRate)
                 {
                     count = 0;
                     second++;
-                    bitRate = nSecFrameStreamBitSize/(1024*1024);
-                    qDebug("the second is %d, bitStream is %dMbps", second, bitRate);
+                    bitRate = nSecFrameStreamBitSize/1024;
+                    qDebug("the second is %d, bitStream is %dKbps", second, bitRate);
                     emit sendInfo(second, bitRate);
                     nSecFrameStreamBitSize = 0;
                 }
             }
         }
     }
-    file->close();
+   // file->close();
     qDebug("thread end");
     this->quit();
     return;

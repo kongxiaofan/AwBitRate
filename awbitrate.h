@@ -44,6 +44,7 @@ private:
     QVector<QString> proLabels;
     QVector<double> proValues;
     QCPBars* bars;
+    qint64 totalBitRate;
 
 private:
     void initPor();

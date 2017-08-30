@@ -29,7 +29,7 @@
    </column>
    <column>
     <property name="text">
-     <string>码率</string>
+     <string>码率(kbps)</string>
     </property>
    </column>
    <column>
@@ -38,7 +38,7 @@
     </property>
    </column>
   </widget>
-  <widget class="QWidget" name="">
+  <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
      <x>3</x>
@@ -62,7 +62,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="filePathLE"/>
+        <widget class="QLineEdit" name="filePathLE">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
        </item>
        <item>
         <widget class="QPushButton" name="openBtn">
@@ -161,24 +165,24 @@
              <item>
               <widget class="QLabel" name="label_7">
                <property name="text">
-                <string>高</string>
+                <string>宽</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="lineEdit_2"/>
+              <widget class="QLineEdit" name="wLE"/>
              </item>
             </layout>
            </item>
            <item>
             <widget class="QLabel" name="label_5">
              <property name="text">
-              <string>宽</string>
+              <string>高</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QLineEdit" name="lineEdit"/>
+            <widget class="QLineEdit" name="hLE"/>
            </item>
           </layout>
          </item>
@@ -222,15 +226,10 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
-            <widget class="QLineEdit" name="orBitRateEL"/>
+            <widget class="QLineEdit" name="orBitRateLE"/>
            </item>
            <item>
             <widget class="QComboBox" name="orBrCB">
-             <item>
-              <property name="text">
-               <string>bps</string>
-              </property>
-             </item>
              <item>
               <property name="text">
                <string>kbps</string>
@@ -239,6 +238,11 @@
              <item>
               <property name="text">
                <string>Mbps</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>bps</string>
               </property>
              </item>
             </widget>
@@ -252,7 +256,6 @@
       <zorder></zorder>
       <zorder></zorder>
       <zorder></zorder>
-      <zorder>label_6</zorder>
      </widget>
     </item>
     <item>

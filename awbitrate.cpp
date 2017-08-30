@@ -27,6 +27,12 @@ AwBitRate::AwBitRate(QWidget *parent) :
     timer = new QTimer;
     timer->setInterval(100);
     nOrBitRate = 1000;//设置默认阈值码率，单位bps
+    QRegExp regExp("^[0-9]*[1-9][0-9]*$");
+    QValidator *vl = new QRegExpValidator(regExp);
+    ui->wLE->setValidator(vl);
+    ui->hLE->setValidator(vl);
+    ui->frameRateLE->setValidator(vl);
+    ui->orBitRateLE->setValidator(vl);
     initPor();
     connect(ui->startBtn, SIGNAL(clicked()), timer, SLOT(start()));
 
@@ -70,12 +76,10 @@ void AwBitRate::on_openBtn_clicked()
 
 void AwBitRate::on_startBtn_clicked()
 {
-    int decoder;
-    qint16 nFrameRate;
-    bool isStreamType;
+    Decoder decoder;
     if(!ui->frameRateLE->text().isEmpty())
     {
-       nFrameRate = ui->frameRateLE->text().toInt();
+       decoder.nFrameRate = ui->frameRateLE->text().toInt();
     }
     else
     {
@@ -84,19 +88,34 @@ void AwBitRate::on_startBtn_clicked()
     }
     if(!ui->decoderCB->currentText().isEmpty())
     {
-        decoder = ui->decoderCB->currentIndex();
-        qDebug("decoder = %d", decoder);
+        decoder.de = (DecoderType)ui->decoderCB->currentIndex();
+        qDebug("decoder = %d", decoder.de);
     }
     else
         return;
     if(ui->streamBtn->isChecked())
-        isStreamType = 1;
+        decoder.isStreamType = true;
     else
-        isStreamType = 0;
+        decoder.isStreamType = false;
 
+    decoder.wigth = ui->wLE->text().toInt();
+    decoder.heigth = ui->hLE->text().toInt();
+
+    totalBitRate = 0;
+
+    if(!ui->orBitRateLE->text().isEmpty())
+    {
+        nOrBitRate = ui->orBitRateLE->text().toInt();
+        if(ui->orBrCB->currentIndex() == 2)
+            nOrBitRate *= 1024;
+        else if(ui->orBrCB->currentIndex() == 3)
+            nOrBitRate /= 1024;
+    }
+    ui->tableWidget->clearContents();
+    ui->tableWidget->setRowCount(0);
     ui->startBtn->setEnabled(false);
-    ui->exportBtn->setEnabled(true);
-    switch(decoder)
+    ui->exportBtn->setEnabled(false);
+    switch(decoder.de)
     {
     case H265:
         qDebug("this is h265");
@@ -106,7 +125,7 @@ void AwBitRate::on_startBtn_clicked()
         break;
     case MPEG2:
         qDebug("this is mpeg2");
-        if(!isStreamType)
+        if(!decoder.isStreamType)
         {
             QMessageBox::warning(this, "warning", "MPEG2不支持帧封装格式！");
             return;
@@ -114,7 +133,7 @@ void AwBitRate::on_startBtn_clicked()
         break;
     case AVS:
         qDebug("this is avs");
-        if(!isStreamType)
+        if(!decoder.isStreamType)
         {
             QMessageBox::warning(this, "warning", "AVS不支持帧封装格式！");
             return;
@@ -125,7 +144,7 @@ void AwBitRate::on_startBtn_clicked()
         return;
     }
 
-    thrd  = new DcrBSThread(file, nFrameRate, isStreamType, (DECODER)decoder);
+    thrd  = new DcrBSThread(file, decoder);
     connect(thrd, SIGNAL(sendTotalReadBits(qint32)), SLOT(udateProgress(qint32)));
     connect(thrd, SIGNAL(sendInfo(qint32,qint32)), SLOT(showBitRat(qint32,qint32)));
     connect(thrd, SIGNAL(sendInfo(qint32,qint32)), SLOT(updatePor(qint32,qint32)));
@@ -136,10 +155,19 @@ void AwBitRate::on_startBtn_clicked()
 void AwBitRate::udateProgress(qint32 totalSize)
 {
     ui->progressBar->setValue(totalSize);
+    if(totalSize == info->size())
+    {
+        ui->startBtn->setEnabled(true);
+        ui->exportBtn->setEnabled(true);
+        file->seek(0);
+    }
 }
 
 void AwBitRate::showBitRat(qint32 second, qint32 bitRate)
 {
+    ui->curBitRateLB->setText(QString::number(bitRate)+"kbps");
+    totalBitRate += bitRate;
+    ui->avrBitRateLB->setText(QString::number(totalBitRate/second) + "kbps");
     ui->tableWidget->insertRow(second-1);
     QTableWidgetItem *sec = new QTableWidgetItem(QString::number(second));
     ui->tableWidget->setItem(second-1, 0, sec);
