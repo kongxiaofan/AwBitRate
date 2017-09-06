@@ -20,7 +20,8 @@ SOURCES += main.cpp\
     decoder/avsframe.cpp \
     decoder/hevcframe.cpp \
     qcustomplot/qcustomplot.cpp \
-    sbm/sbm.cpp
+    sbm/sbm.cpp \
+    sbm/sbmhevc.cpp
 
 HEADERS  += awbitrate.h \
     dcrbsthread.h \
@@ -29,7 +30,9 @@ HEADERS  += awbitrate.h \
     decoder/avsframe.h \
     decoder/hevcframe.h \
     qcustomplot/qcustomplot.h \
-    sbm/sbm.h
+    sbm/sbm.h \
+    sbm/sbmhevc.h \
+    version/version.h
 
 FORMS    += awbitrate.ui
 CONFIG   += qaxcontainer

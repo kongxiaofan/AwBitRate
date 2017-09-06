@@ -1,202 +1,130 @@
 #include "hevcframe.h"
 #include <QFile>
 
-HevcFrame::HevcFrame(bool type, QFile *file)
+HevcFrame::HevcFrame(QFile *fp, Decoder dec)
 {
-    bStreameType = type;
-    offset = 0;
-    fp = file;
-    curStreamData = 0;
-    pBuf = (char *)malloc(1024);
-    pBuf2 = (char *)malloc(1024);
+    pSbm = new SbmHevc();
+    int size = pSbm->decideStreamBufferSize(dec.wigth, dec.heigth);
+    pSbm->init(size);
+    pSbm->setEos(false);
+    sb = new H265Submit(fp, dec, pSbm);
+    cs = new H265Cosum(pSbm, dec);
 }
 
 HevcFrame::~HevcFrame()
 {
-    free(pBuf);
-    free(pBuf2);
-}
-
-int HevcFrame::judgeOneFrame()
-{
-    if(bStreameType)
-    {
-        return judgeStreamPacketFrame();
-    }
-    else
-    {
-        return judgeFramePacketFrame();
-    }
 
 }
 
-int HevcFrame::searchNaluSize(char *pData, int nSize)
+void HevcFrame::caculate()
 {
-    int i, nTemp, nNaluLen;
-    int mask = 0xffffff;
-    nTemp = -1;
-    nNaluLen = -1;
-    for(i = 0; i < nSize; i++)
+    sb->start();
+    pSbm->start();
+    cs->start();
+    sb->wait();
+    cs->wait();
+    pSbm->destroy();
+}
+
+
+
+H265Submit::H265Submit(QFile *fp, Decoder dec, SbmHevc *tSbm)
+{
+    pSbm = tSbm;
+    file = fp;
+    decoder = dec;
+}
+
+void H265Submit::run()
+{
+    char*               pBuf0;
+    char*               pBuf1;
+    int                 nBufSize0;
+    int                 nBufSize1;
+    char pData[1024];
+    int                 nLength;
+    VideoStreamDataInfo pDataInfo;
+    qDebug("submint thread run, file = %p", file);
+
+    while(!file->atEnd() && file->isReadable())
     {
-        nTemp = (nTemp << 8) | pData[i];
-        if((nTemp & mask) == 0x000001)
+        nLength = (int)file->readLine(pData, 1024);//how big??
+        //qDebug("read length = %d", nLength);
+        //request  buffer
+        while(1)
         {
-            nNaluLen = i - 3;
-            break;
-        }
-    }
-    return nNaluLen;
-}
-
-bool HevcFrame::judgeFirstNalu(char *pData)
-{
-    int nNaluType = (pData[0] & 0x7e) >> 1;
-    if(((nNaluType >= 32) && (nNaluType <= 35)) || (nNaluType == 39))
-    {
-        return true;
-    }
-    if(nNaluType <= 21)
-    {
-        int bFirstSliceSegment = pData[2] >> 7;
-        if(bFirstSliceSegment == 1)
-        {
-            return true;
-        }
-        else
-            return false;
-    }
-    return false;
-}
-
-bool HevcFrame::judgeFirstNalu(char *pData1, char *pData2, int x)
-{
-    int nNaluType = (pData1[0] & 0x7e) >> 1;
-    if(((nNaluType >= 32) && (nNaluType <= 35)) || (nNaluType == 39))
-    {
-        return true;
-    }
-    if(nNaluType <= 21)
-    {
-        int bFirstSliceSegment = pData2[x] >> 7;
-        if(bFirstSliceSegment == 1)
-        {
-            return true;
-        }
-        else
-            return false;
-    }
-    return false;
-}
-
-int HevcFrame::searchStartCode(char *pData)
-{
-    int i = 0;
-    int nSize = curStreamData - 3;
-    while(nSize > 0)
-    {
-        if(pData[i] == 0x00 && pData[i+1] == 0x00 && pData[i+2] == 0x01)
-        {
-            offset += 3;
-            return 0;
-        }
-        offset++;
-        i++;
-        nSize--;
-    }
-    return -1;
-}
-
-int HevcFrame::judgeStreamPacketFrame()
-{
-    int nRet = 0;
-    bool bCurFrameStartCodeFound = false;
-    bool bFirstNalu =false;
-    offset = 0;
-    while(1)
-    {
-        if(curStreamData < 5)
-        {
-            length = fp->read(pBuf, 1024);
-            if(length == -1)
+            int nRet = pSbm->requestStreamBuffer(nLength, &pBuf0, &nBufSize0, &pBuf1, &nBufSize1);
+            //qDebug("nRet = %d, nBufSize0 = %d, nBufSize1 = %d, nLength = %d", nRet, nBufSize0, nBufSize1, nLength);
+            if(nRet < 0)
             {
-                if(fp->atEnd())
-                {
-                    bCurFrameStartCodeFound = false;
-                    return frameLength;
-                }
-                else
-                    continue;
-            }
-            frameLength += curStreamData;
-            curStreamData = length;
-        }
-        pBuf = pBuf + offset;
-        nRet = searchStartCode(pBuf);//searchFirstStartCode
-        if(nRet != 0)//???????
-        {
-            frameLength += curStreamData;
-            curStreamData = 0;
-            continue;
-        }
-        else
-        {
-            curStreamData -= offset;
-            frameLength += (offset - 3);
-            //if(offset + 3 < curStreamData)
-            if(curStreamData >= 3)
-            {
-                pBuf += offset;
-                bFirstNalu = judgeFirstNalu(pBuf);
+                sleep(10);
+                qDebug("wait for buffer");
+                //do something
             }
             else
-            {
-                //length = fread(pBuf2, 1, 1024, rfp);
-                length = fp->read(pBuf2, 1024);
-                if(length == -1)
-                {
-                    if(fp->atEnd())
-                    {
-                        bCurFrameStartCodeFound = false;
-                        return frameLength;
-                    }
-                    else
-                        continue;
-                }
-
-                if(curStreamData == 2)
-                {
-                    bFirstNalu = judgeFirstNalu(pBuf, pBuf2, 0);
-                    offset = 1;
-                }
-                else if(curStreamData == 1)
-                {
-                    bFirstNalu = judgeFirstNalu(pBuf, pBuf2, 1);
-                    offset = 2;
-
-                }
-                else if(curStreamData < 1)
-                {
-                    bFirstNalu = judgeFirstNalu(pBuf2);
-                    offset = 3;
-                }
-                memset(pBuf, 0,  1024);
-                memcpy(pBuf, pBuf2, length);
-                curStreamData = length - offset;
-            }
-
-            if(bFirstNalu)
-            {
-                if(bCurFrameStartCodeFound)
-                    return frameLength;
-                else
-                    bCurFrameStartCodeFound = true;
-            }
+                break;
         }
-    }
+        //submit data
+        if(nLength > nBufSize0)
+        {
+            memcpy(pBuf0, pData, nBufSize0);
+            memcpy(pBuf1, pData + nBufSize0, nLength-nBufSize0);
+        }
+        else
+            memcpy(pBuf0, pData, nLength);
 
+        pDataInfo.pData        = pBuf0;
+        pDataInfo.nLength      = nLength;
+        pSbm->addStream(&pDataInfo);
+    }
+    qDebug("end of thread");
+    file->seek(0);
+    pSbm->setEos(true);
+    return;
 }
 
-int HevcFrame::judgeFramePacketFrame()
+
+H265Cosum::H265Cosum(SbmHevc *tSbm, Decoder dec)
 {
-    return false;
+    pSbm = tSbm;
+    decoder = dec;
+}
+
+void H265Cosum::run()
+{
+    int second = 0;
+    int bitRate = 0;
+    int nCount = 0;
+
+    while(1)
+    {
+        FramePicInfo*        pFramePic = NULL;
+        //request one pic
+        pFramePic = pSbm->requestFramePic();
+        qDebug("pFramePic = %p", pFramePic);
+        if(pFramePic == NULL)
+        {
+            if(!pSbm->isEos())
+            {
+                sleep(10);
+                continue;
+            }
+            else
+                break;
+        }
+        //do other thing
+        bitRate += pFramePic->nLength;
+        nCount++;
+        second++;
+        if(nCount == decoder.nFrameRate)
+        {
+            nCount = 0;
+            emit sendInfo(second, bitRate);
+        }
+
+        //flush the pic
+        pSbm->flushFramePic(pFramePic);
+    }
+    qDebug("exit the comsum thread");
+    return;
 }

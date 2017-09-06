@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>AwBitRate</string>
+   <string>AwBitRate_v1(F1 for help)</string>
   </property>
   <widget class="QTableWidget" name="tableWidget">
    <property name="geometry">

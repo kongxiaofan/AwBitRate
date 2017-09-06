@@ -86,7 +86,7 @@ int AvsFrame::catOneAvsStreamFrame(unsigned char *pBuf, int length)
             bCurFrameStartCodeFound = true;
         retSize = offset;
     }
-
+    return 0;
 }
 
 void AvsFrame::resetValue()

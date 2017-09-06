@@ -33,6 +33,8 @@ private slots:
 
     void on_exportBtn_clicked();
 
+    void helpDlgShow();
+
 private:
     Ui::AwBitRate *ui;
     QFile *file;
@@ -45,6 +47,8 @@ private:
     QVector<double> proValues;
     QCPBars* bars;
     qint64 totalBitRate;
+    double avrBitRate;
+    QAction *helpAct;
 
 private:
     void initPor();

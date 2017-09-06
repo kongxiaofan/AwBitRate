@@ -1,32 +1,49 @@
 #ifndef HEVCFRAME_H
 #define HEVCFRAME_H
+#include <QThread>
+#include "include/infor.h"
+#include "sbm/sbmhevc.h"
 
 class QFile;
+
+
+class H265Submit : public QThread
+{
+public:
+    H265Submit(QFile *fp, Decoder dec, SbmHevc *tSbm);
+    void run();
+private:
+    SbmHevc *pSbm;
+    QFile *file;
+    Decoder decoder;
+};
+
+class H265Cosum : public QThread
+{
+    Q_OBJECT
+public:
+     H265Cosum(SbmHevc *tSbm, Decoder dec);
+     void run();
+
+signals:
+    void sendInfo(int second, int bitRate);
+private:
+     SbmHevc *pSbm;
+     Decoder  decoder;
+};
+
+
 class HevcFrame
 {
 public:
-    HevcFrame(bool type, QFile *file);
+    HevcFrame(QFile *fp, Decoder dec);
     ~HevcFrame();
-    int judgeOneFrame();
+    H265Submit *sb;
+    H265Cosum  *cs;
+    void caculate();
 
 private:
-    int searchNaluSize(char *pData, int nSize);
-    bool judgeFirstNalu(char *pData);
-    bool judgeFirstNalu(char *pData1, char *pData2, int x);
-    int searchStartCode(char *pData);
-    int judgeStreamPacketFrame();
-    int judgeFramePacketFrame();
-
-
-private:
-    bool bStreameType;
-    int offset;
-    QFile *fp;
-    int length;
-    int curStreamData;
-    int frameLength;
-    char *pBuf ;
-    char *pBuf2;
+    SbmHevc *pSbm;
 };
 
 #endif // HEVCFRAME_H

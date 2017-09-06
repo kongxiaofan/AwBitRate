@@ -10,20 +10,23 @@ class DcrBSThread : public QThread
 {
      Q_OBJECT
 public:
-    DcrBSThread(QFile *fp, Decoder decoder);
+    DcrBSThread(QFile *fp, Decoder dec);
 protected:
     void run();
 
 signals:
     void sendTotalReadBits(qint32 bits);
     void sendInfo(qint32 second, qint32 bitRate);
+
+private slots:
+    void recvInfo(qint32 second, qint32 bitRate);
 private:
-    qint16 frameRate;
+    Decoder decoder;
     QFile *file;
-    DecoderType type;
+
     bool bStreamType;
     void decribeMpeg2Info(const qint16 nFrameRate);
-    void decribeAvsInfo(const qint16 nFrameRate);
+    void decribeHevcInfo(QFile *fp, Decoder decoder);
 
 };
 

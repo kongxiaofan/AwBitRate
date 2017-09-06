@@ -14,6 +14,8 @@
 #include <QAxBase>
 #include <QAxObject>
 #include <QDesktopServices>
+#include <QAction>
+
 
 #define  BUFF_SIZE 1024*1024
 #define SIZE 15
@@ -34,8 +36,17 @@ AwBitRate::AwBitRate(QWidget *parent) :
     ui->frameRateLE->setValidator(vl);
     ui->orBitRateLE->setValidator(vl);
     initPor();
-    connect(ui->startBtn, SIGNAL(clicked()), timer, SLOT(start()));
+    ui->proWidget->addGraph();
+    QPen pen;
+    pen.setColor(QColor(255, 0, 0, 255));
+    ui->proWidget->graph()->setLineStyle(QCPGraph::lsLine);
+    ui->proWidget->graph()->setPen(pen);
 
+    helpAct = new QAction(this);
+    helpAct->setShortcut(tr("F1"));
+    this->addAction(helpAct);
+    connect(helpAct, SIGNAL(triggered()), SLOT(helpDlgShow()));
+    connect(ui->startBtn, SIGNAL(clicked()), timer, SLOT(start()));
 }
 
 AwBitRate::~AwBitRate()
@@ -88,8 +99,8 @@ void AwBitRate::on_startBtn_clicked()
     }
     if(!ui->decoderCB->currentText().isEmpty())
     {
-        decoder.de = (DecoderType)ui->decoderCB->currentIndex();
-        qDebug("decoder = %d", decoder.de);
+        decoder.type = (DecoderType)ui->decoderCB->currentIndex();
+        qDebug("decoder = %d", decoder.type);
     }
     else
         return;
@@ -101,8 +112,6 @@ void AwBitRate::on_startBtn_clicked()
     decoder.wigth = ui->wLE->text().toInt();
     decoder.heigth = ui->hLE->text().toInt();
 
-    totalBitRate = 0;
-
     if(!ui->orBitRateLE->text().isEmpty())
     {
         nOrBitRate = ui->orBitRateLE->text().toInt();
@@ -111,11 +120,32 @@ void AwBitRate::on_startBtn_clicked()
         else if(ui->orBrCB->currentIndex() == 3)
             nOrBitRate /= 1024;
     }
+    else
+    {
+        if(ui->orBrCB->currentIndex() == 0)
+        {
+            nOrBitRate = 1000;
+            ui->orBitRateLE->setText("1000");
+        }
+        else if(ui->orBrCB->currentIndex() == 1)
+        {
+            nOrBitRate = 1;
+            ui->orBitRateLE->setText("1");
+        }
+        else
+        {
+            nOrBitRate = 1000000;
+            ui->orBitRateLE->setText("1000000");
+        }
+    }
     ui->tableWidget->clearContents();
     ui->tableWidget->setRowCount(0);
+
+    totalBitRate = 0;
+
     ui->startBtn->setEnabled(false);
     ui->exportBtn->setEnabled(false);
-    switch(decoder.de)
+    switch(decoder.type)
     {
     case H265:
         qDebug("this is h265");
@@ -143,6 +173,7 @@ void AwBitRate::on_startBtn_clicked()
         QMessageBox::warning(this, "warning", "请选择一种解码器！");
         return;
     }
+    qDebug("main file = %p", file);
 
     thrd  = new DcrBSThread(file, decoder);
     connect(thrd, SIGNAL(sendTotalReadBits(qint32)), SLOT(udateProgress(qint32)));
@@ -165,18 +196,32 @@ void AwBitRate::udateProgress(qint32 totalSize)
 
 void AwBitRate::showBitRat(qint32 second, qint32 bitRate)
 {
-    ui->curBitRateLB->setText(QString::number(bitRate)+"kbps");
+    QString unitStr("kbps");
+    if(ui->orBrCB->currentIndex() == 1)
+    {
+        unitStr = "Mbps";
+        bitRate /= 1024;
+    }
+    else if(ui->orBrCB->currentIndex() == 2)
+    {
+        unitStr = "bps";
+        bitRate *= 1024;
+    }
+    ui->curBitRateLB->setText(QString::number(bitRate)+ unitStr);
     totalBitRate += bitRate;
-    ui->avrBitRateLB->setText(QString::number(totalBitRate/second) + "kbps");
+    avrBitRate = totalBitRate/second;
+    ui->avrBitRateLB->setText(QString::number(avrBitRate) + unitStr);
     ui->tableWidget->insertRow(second-1);
     QTableWidgetItem *sec = new QTableWidgetItem(QString::number(second));
     ui->tableWidget->setItem(second-1, 0, sec);
 
+    ui->tableWidget->horizontalHeaderItem(1)->setText("码率(" + unitStr + ")" );
     QTableWidgetItem *br = new QTableWidgetItem(QString::number(bitRate));
     ui->tableWidget->setItem(second-1, 1, br);
 
     QTableWidgetItem *diff = new QTableWidgetItem(QString::number(bitRate - nOrBitRate));
     ui->tableWidget->setItem(second-1, 2, diff);
+    qApp->processEvents();
 }
 
 void AwBitRate::updatePor(qint32 second, qint32 bitRate)
@@ -190,9 +235,12 @@ void AwBitRate::updatePor(qint32 second, qint32 bitRate)
     proLabels.insert(i, QString("%1").arg(second));
     proValues.insert(i, bitRate);
     QVector<double> index(SIZE);
-
+    QVector<double> lineValue;
     for(int i=0; i<SIZE; ++i)
+    {
         index[i] = i;
+        lineValue.append(avrBitRate);
+    }
     bars->setData(index,proValues);
     ui->proWidget->xAxis->setAutoTicks(false);
     ui->proWidget->xAxis->setAutoTickLabels(false);
@@ -210,6 +258,9 @@ void AwBitRate::updatePor(qint32 second, qint32 bitRate)
     ui->proWidget->xAxis->setTickVector(coor);
 
     ui->proWidget->xAxis->setTickVectorLabels(proLabels);
+
+    ui->proWidget->graph()->setData(index, lineValue);
+    ui->proWidget->graph()->rescaleAxes(true);
 
     ui->proWidget->replot();
 }
@@ -245,6 +296,17 @@ void AwBitRate::on_exportBtn_clicked()
         }
         QMessageBox::information(this,"提示", "Exporting data successful");
     }
+}
+
+void AwBitRate::helpDlgShow()
+{
+    QString str =  "App:\tAwbitRate \n"           \
+                   "Ver:\t1.0 \n"                 \
+                   "Author:\tGan Qiuye\n"         \
+                   "Email:\tganqiuye@163.com\n"   \
+                   "Time:\t2017.09.01\n";
+    QMessageBox message(QMessageBox::NoIcon, "About", str);
+    message.exec();
 }
 
 void AwBitRate::initPor()
