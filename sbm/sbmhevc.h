@@ -10,6 +10,8 @@ public:
     SbmHevc();
     void run();
 protected:
+     char readByteIdx(char *p, char *pStart, char *pEnd, int i);
+     void ptrPlusOne(char **p, char *pStart, char *pEnd);
      int checkBitStreamTypeWithStartCode(VideoStreamDataInfo *pStream);
      int checkBitStreamTypeWithoutStartCode(VideoStreamDataInfo *pStream);
      int checkBitStreamType();

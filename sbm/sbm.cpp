@@ -388,8 +388,8 @@ int Sbm::flushFramePic(FramePicInfo* pFramePic)
         return -1;
     }
     nFlushPos = mFramePicFifo.nFPFlushPos;
-    qDebug("sbm flush stream , pos = %d, pFrame = %p, %p",nFlushPos,
-          pFramePic, &mFramePicFifo.pFramePics[nFlushPos]);
+   // qDebug("sbm flush stream , pos = %d, pFrame = %p, %p",nFlushPos,
+   //       pFramePic, &mFramePicFifo.pFramePics[nFlushPos]);
     if(pFramePic != &mFramePicFifo.pFramePics[nFlushPos])
     {
         qDebug("not current nFlushPos.");
@@ -404,7 +404,7 @@ int Sbm::flushFramePic(FramePicInfo* pFramePic)
 
     mFramePicFifo.nValidFramePicNum--;
     mFramePicFifo.nFPFlushPos = nFlushPos;
-    qDebug("validFramePicNum = %d",mFramePicFifo.nValidFramePicNum );
+   // qDebug("validFramePicNum = %d",mFramePicFifo.nValidFramePicNum );
     nValidDataSize -= pFramePic->nLength;
 
     mutex.unlock();
@@ -540,7 +540,7 @@ int Sbm::returnStream(VideoStreamDataInfo *pDataInfo)
 }
 
 
-int Sbm::flushStream(VideoStreamDataInfo *pDataInfo)
+int Sbm::flushStream(VideoStreamDataInfo *pDataInfo, bool bFlush)
 {
     //qDebug("flushStream");
     int nFlushPos;
@@ -557,8 +557,8 @@ int Sbm::flushStream(VideoStreamDataInfo *pDataInfo)
 
     nFlushPos = frameFifo.nFlushPos;
 
-    qDebug("flush stream, pDataInfo = %p, pos = %d, %p",
-          pDataInfo, nFlushPos,&frameFifo.pFrames[nFlushPos]);
+    //qDebug("flush stream, pDataInfo = %p, pos = %d, %p",
+      //    pDataInfo, nFlushPos,&frameFifo.pFrames[nFlushPos]);
     if(pDataInfo != &frameFifo.pFrames[nFlushPos])
     {
         qDebug("not current nFlushPos.");
@@ -574,7 +574,8 @@ int Sbm::flushStream(VideoStreamDataInfo *pDataInfo)
     }
 
     frameFifo.nValidFrameNum--;
-    //nValidDataSize     -= pDataInfo->nLength;
+    if(bFlush)
+        nValidDataSize     -= pDataInfo->nLength;
    // qDebug("validFrameNum = %d", frameFifo.nValidFrameNum);
     frameFifo.nFlushPos = nFlushPos;
     mutex.unlock();
@@ -584,7 +585,6 @@ int Sbm::flushStream(VideoStreamDataInfo *pDataInfo)
 
 FramePicInfo* Sbm::requestEmptyFramePicBuf()
 {
-    qDebug("requestEmptyFramePicBuf");
     int nWritePos = -1;
     FramePicInfo* pFramePic = NULL;
 
@@ -608,7 +608,6 @@ FramePicInfo* Sbm::requestEmptyFramePicBuf()
 
 int Sbm::addFramePic(FramePicInfo* pFramePic)
 {
-    qDebug("addFramePic");
     int nWritePos = -1;
 
     if(pFramePic == NULL)
@@ -662,7 +661,6 @@ inline void Sbm::expandNaluList(FramePicInfo* pFramePic)
 
 void Sbm::initFramePicInfo(DetectFramePicInfo* pDetectInfo)
 {
-    qDebug("initFramePicInfo");
     FramePicInfo* pFramePic = mDetectInfo.pCurFramePic;
     pFramePic->nLength = 0;
     pFramePic->pDataStartAddr = NULL;
@@ -681,12 +679,11 @@ void Sbm::initFramePicInfo(DetectFramePicInfo* pDetectInfo)
 
 int Sbm::supplyStreamData()
 {
-    qDebug("supplyStreamData");
     char* pEnd   = pStreamBufferEnd;
 
     if(mDetectInfo.pCurStream)
     {
-        flushStream( mDetectInfo.pCurStream);
+        flushStream( mDetectInfo.pCurStream, false);
         mDetectInfo.pCurStream = NULL;
         if(mDetectInfo.pCurFramePic)
         {
@@ -739,8 +736,8 @@ void Sbm::disposeInvalidStreamData()
         }
     }
 
-    qDebug("bNeedAddFramePic = %d",bNeedAddFramePic );
-    flushStream(mDetectInfo.pCurStream);
+    //qDebug("bNeedAddFramePic = %d",bNeedAddFramePic );
+    flushStream(mDetectInfo.pCurStream, false);
     mDetectInfo.pCurStream = NULL;
     mDetectInfo.pCurStreamDataPtr = NULL;
     mDetectInfo.nCurStreamDataSize = 0;
@@ -755,7 +752,7 @@ void Sbm::disposeInvalidStreamData()
 
 void Sbm::skipCurStreamDataBytes(int nSkipSize)
 {
-    qDebug("skipCurStreamDataBytes = %d", nSkipSize);
+    //qDebug("skipCurStreamDataBytes = %d", nSkipSize);
     char* pStart = pStreamBuffer;
     char* pEnd   = pStreamBufferEnd;
     mDetectInfo.pCurStreamDataPtr += nSkipSize;
@@ -771,7 +768,7 @@ void Sbm::skipCurStreamDataBytes(int nSkipSize)
 
 void Sbm::storeNaluInfo(int nNaluType, int nNaluSize, char* pNaluBuf)
 {
-    qDebug("storeNaluInfo, nNaluType = %d, nNaluSize = %d", nNaluType, nNaluSize);
+   // qDebug("storeNaluInfo, nNaluType = %d, nNaluSize = %d", nNaluType, nNaluSize);
     int nNaluIdx = mDetectInfo.pCurFramePic->nCurNaluIdx;
     NaluInfo* pNaluInfo = &mDetectInfo.pCurFramePic->pNaluInfoList[nNaluIdx];
     pNaluInfo->nType = nNaluType;

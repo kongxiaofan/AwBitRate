@@ -41,10 +41,12 @@ AwBitRate::AwBitRate(QWidget *parent) :
     pen.setColor(QColor(255, 0, 0, 255));
     ui->proWidget->graph()->setLineStyle(QCPGraph::lsLine);
     ui->proWidget->graph()->setPen(pen);
-
+    setWindowFlags(Qt::WindowMinimizeButtonHint | Qt::MSWindowsFixedSizeDialogHint);
     helpAct = new QAction(this);
     helpAct->setShortcut(tr("F1"));
     this->addAction(helpAct);
+    maxBitRate = 0;
+    minBitRate = 0xfffffff;
     connect(helpAct, SIGNAL(triggered()), SLOT(helpDlgShow()));
     connect(ui->startBtn, SIGNAL(clicked()), timer, SLOT(start()));
 }
@@ -140,9 +142,15 @@ void AwBitRate::on_startBtn_clicked()
     }
     ui->tableWidget->clearContents();
     ui->tableWidget->setRowCount(0);
-
     totalBitRate = 0;
-
+    avrBitRate = 0;
+    maxBitRate = 0;
+    minBitRate = 0;
+    for(int i=0; i<SIZE-1; i++)
+    {
+        proLabels.replace(i, 0);
+        proValues.replace(i, 0);
+    }
     ui->startBtn->setEnabled(false);
     ui->exportBtn->setEnabled(false);
     switch(decoder.type)
@@ -207,10 +215,16 @@ void AwBitRate::showBitRat(qint32 second, qint32 bitRate)
         unitStr = "bps";
         bitRate *= 1024;
     }
-    ui->curBitRateLB->setText(QString::number(bitRate)+ unitStr);
     totalBitRate += bitRate;
     avrBitRate = totalBitRate/second;
+    if(maxBitRate < bitRate)
+        maxBitRate = bitRate;
+    if(minBitRate > bitRate)
+        minBitRate = bitRate;
     ui->avrBitRateLB->setText(QString::number(avrBitRate) + unitStr);
+    ui->maxBitRateLB->setText(QString::number(maxBitRate) + unitStr);
+    ui->minBitRateLB->setText(QString::number(minBitRate) + unitStr);
+
     ui->tableWidget->insertRow(second-1);
     QTableWidgetItem *sec = new QTableWidgetItem(QString::number(second));
     ui->tableWidget->setItem(second-1, 0, sec);

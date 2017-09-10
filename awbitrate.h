@@ -48,6 +48,8 @@ private:
     QCPBars* bars;
     qint64 totalBitRate;
     double avrBitRate;
+    double maxBitRate;
+    double minBitRate;
     QAction *helpAct;
 
 private:

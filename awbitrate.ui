@@ -64,7 +64,7 @@
        <item>
         <widget class="QLineEdit" name="filePathLE">
          <property name="readOnly">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -280,7 +280,7 @@
              <item>
               <widget class="QLabel" name="label_4">
                <property name="text">
-                <string>当前帧：</string>
+                <string>最小码率：</string>
                </property>
               </widget>
              </item>
@@ -296,7 +296,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="curFrameLB">
+              <widget class="QLabel" name="minBitRateLB">
                <property name="text">
                 <string/>
                </property>
@@ -313,7 +313,7 @@
              <item>
               <widget class="QLabel" name="label_8">
                <property name="text">
-                <string>当前码率：</string>
+                <string>最大码率：</string>
                </property>
               </widget>
              </item>
@@ -329,7 +329,7 @@
            <item>
             <layout class="QVBoxLayout" name="verticalLayout_9">
              <item>
-              <widget class="QLabel" name="curBitRateLB">
+              <widget class="QLabel" name="maxBitRateLB">
                <property name="text">
                 <string/>
                </property>

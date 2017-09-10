@@ -54,7 +54,7 @@ void H265Submit::run()
         while(1)
         {
             int nRet = pSbm->requestStreamBuffer(nLength, &pBuf0, &nBufSize0, &pBuf1, &nBufSize1);
-            //qDebug("nRet = %d, nBufSize0 = %d, nBufSize1 = %d, nLength = %d", nRet, nBufSize0, nBufSize1, nLength);
+            qDebug("nRet = %d, nBufSize0 = %d, nBufSize1 = %d, nLength = %d", nRet, nBufSize0, nBufSize1, nLength);
             if(nRet < 0)
             {
                 sleep(10);
@@ -77,7 +77,7 @@ void H265Submit::run()
         pDataInfo.nLength      = nLength;
         pSbm->addStream(&pDataInfo);
     }
-    qDebug("end of thread");
+    qDebug("end of sub thread");
     file->seek(0);
     pSbm->setEos(true);
     return;
@@ -95,7 +95,7 @@ void H265Cosum::run()
     int second = 0;
     int bitRate = 0;
     int nCount = 0;
-
+    int reCount = 0;
     while(1)
     {
         FramePicInfo*        pFramePic = NULL;
@@ -104,22 +104,34 @@ void H265Cosum::run()
         qDebug("pFramePic = %p", pFramePic);
         if(pFramePic == NULL)
         {
-            if(!pSbm->isEos())
+            if(!pSbm->isEos() && pSbm->getStreamFrameNum() != 0)
             {
-                sleep(10);
+                //sleep(10);
+                reCount++;
+
+                qDebug("not eos, streamFrameNum = %d", pSbm->getStreamFrameNum());
+                if(reCount == 10)
+                    break;
                 continue;
             }
             else
+            {
+                qDebug("eos");
                 break;
+            }
         }
         //do other thing
         bitRate += pFramePic->nLength;
+        qDebug("gqy**** bitRate = %d, pic->nLength = %d ", bitRate, pFramePic->nLength);
         nCount++;
         second++;
+        qDebug("******nCount = %d", nCount);
         if(nCount == decoder.nFrameRate)
         {
             nCount = 0;
+            qDebug("gqy sendinfo");
             emit sendInfo(second, bitRate);
+            bitRate = 0;
         }
 
         //flush the pic

@@ -41,28 +41,6 @@ typedef enum SbmHevcNaluType
 #define MAX_INVALID_STREAM_DATA_SIZE (1*1024*1024) //* 1 MB
 #define MAX_NALU_NUM_IN_FRAME (1024)
 
-static inline char readByteIdx(char *p, char *pStart, char *pEnd, int i)
-{
-    char c = 0x0;
-    if((p+i) <= pEnd)
-        c = p[i];
-    else
-    {
-        int d = (int)(pEnd - p) + 1;
-        c = pStart[i - d];
-    }
-    return c;
-}
-
-
-static inline void ptrPlusOne(char **p, char *pStart, char *pEnd)
-{
-    if((*p) == pEnd)
-        (*p) = pStart;
-    else
-        (*p) += 1;
-}
-
 
 SbmHevc::SbmHevc()
 {
@@ -98,7 +76,7 @@ void SbmHevc::run()
         {
             if(mDetectInfo.pCurStream)
             {
-                flushStream(mDetectInfo.pCurStream);
+                flushStream(mDetectInfo.pCurStream, false);
                 mDetectInfo.pCurStream = NULL;
             }
 
@@ -132,6 +110,27 @@ void SbmHevc::run()
             mutex.unlock();
         }
     }
+}
+
+inline char SbmHevc::readByteIdx(char *p, char *pStart, char *pEnd, int i)
+{
+    char c = 0x0;
+    if((p+i) <= pEnd)
+        c = p[i];
+    else
+    {
+        int d = (int)(pEnd - p) + 1;
+        c = pStart[i - d];
+    }
+    return c;
+}
+
+inline void SbmHevc::ptrPlusOne(char **p, char *pStart, char *pEnd)
+{
+    if((*p) == pEnd)
+        (*p) = pStart;
+    else
+        (*p) += 1;
 }
 
 int SbmHevc::checkBitStreamTypeWithStartCode(VideoStreamDataInfo *pStream)
@@ -288,7 +287,7 @@ int SbmHevc::checkBitStreamType()
         }
         if(pStream->nLength == 0 || pStream->pData == NULL)
         {
-            flushStream( pStream);
+            flushStream(pStream, true);
             pStream = NULL;
             continue;
         }
@@ -334,13 +333,13 @@ int SbmHevc::checkBitStreamType()
         //*continue reqeust stream from sbm when if judge the stream type
         if(bStreamWithStartCode == -1)
         {
-            flushStream( pStream);
+            flushStream(pStream, true);
             continue;
         }
         else
         {
             //* judge stream type successfully, return.
-            returnStream( pStream);
+            returnStream(pStream);
             nRet = 0;
             break;
         }
@@ -443,8 +442,8 @@ void SbmHevc::detectWithStartCode()
         if(nRet != 0 //*  can not find startCode
            || mDetectInfo.pCurFramePic->nCurNaluIdx > MAX_NALU_NUM_IN_FRAME)
         {
-            qDebug("can not find startCode, curNaluIdx = %d, max = %d",
-                  mDetectInfo.pCurFramePic->nCurNaluIdx, MAX_NALU_NUM_IN_FRAME);
+           // qDebug("can not find startCode, curNaluIdx = %d, max = %d",
+                 // mDetectInfo.pCurFramePic->nCurNaluIdx, MAX_NALU_NUM_IN_FRAME);
             disposeInvalidStreamData();
             return ;
         }
@@ -453,9 +452,14 @@ void SbmHevc::detectWithStartCode()
         //*3.  read the naluType and bFirstSliceSegment
         char* pAfterStartCodeBuf = mDetectInfo.pCurStreamDataPtr + nAfterStartCodeIdx;
         tmpBuf[0] = readByteIdx(pAfterStartCodeBuf ,pStart, pEnd, 0);
+        tmpBuf[1] = readByteIdx(pAfterStartCodeBuf ,pStart, pEnd, 1);
+        tmpBuf[2] = readByteIdx(pAfterStartCodeBuf ,pStart, pEnd, 2);
+        tmpBuf[3] = readByteIdx(pAfterStartCodeBuf ,pStart, pEnd, 3);
+        tmpBuf[4] = readByteIdx(pAfterStartCodeBuf ,pStart, pEnd, 4);
+        tmpBuf[5] = readByteIdx(pAfterStartCodeBuf ,pStart, pEnd, 5);
         int nNaluType = (tmpBuf[0] & 0x7e) >> 1;
 
-        qDebug("*** nNaluType = %d",nNaluType);
+       // qDebug("*** nNaluType = %d",nNaluType);
         if((nNaluType >= SBM_HEVC_NAL_VPS && nNaluType <= SBM_HEVC_NAL_AUD) ||
             nNaluType == SBM_HEVC_NAL_SEI_PREFIX)
         {
@@ -472,8 +476,8 @@ void SbmHevc::detectWithStartCode()
         if(IsFrameNalu(nNaluType))
         {
             tmpBuf[2] = readByteIdx(pAfterStartCodeBuf ,pStart, pEnd, 2);
-            bFirstSliceSegment = (tmpBuf[2] >> 7);
-            qDebug("***bFirstSliceSegment = %d", bFirstSliceSegment);
+            bFirstSliceSegment = (tmpBuf[2] >> 7) & 0x01;
+            //qDebug("***bFirstSliceSegment = %d", bFirstSliceSegment);
             if(bFirstSliceSegment == 1)
             {
                 if(mDetectInfo.bCurFrameStartCodeFound == 0)
@@ -488,6 +492,7 @@ void SbmHevc::detectWithStartCode()
                     qDebug("**** have found one frame pic ****");
                     mDetectInfo.bCurFrameStartCodeFound = 0;
                     addFramePic(mDetectInfo.pCurFramePic);
+                    qDebug("the length = %d", mDetectInfo.pCurFramePic->nLength);
                     mDetectInfo.pCurFramePic = NULL;
                     return ;
                 }
@@ -604,7 +609,7 @@ void SbmHevc::detectWithoutStartCode()
         if(IsFrameNalu(nNaluType))
         {
             tmpBuf[2] = readByteIdx(pAfterStartCodePtr ,pStart, pEnd, 2);
-            bFirstSliceSegment = (tmpBuf[2] >> 7);
+            bFirstSliceSegment = (tmpBuf[2] >> 7) & 0x01;
             qDebug("***bFirstSliceSegment = %d", bFirstSliceSegment);
 
             if(bFirstSliceSegment == 1)
@@ -639,7 +644,7 @@ void SbmHevc::detectWithoutStartCode()
 
 void SbmHevc::detectOneFramePic()
 {
-    qDebug("bStreamWithStartCode = %d",bStreamWithStartCode);
+    //qDebug("bStreamWithStartCode = %d",bStreamWithStartCode);
     if(bStreamWithStartCode == 1)
     {
         detectWithStartCode();

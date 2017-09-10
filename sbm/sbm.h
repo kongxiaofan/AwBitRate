@@ -110,7 +110,7 @@ protected:
     VideoStreamDataInfo *requestStream();
     int sbmRequestBuffer(int nRequireSize, char** ppBuf, int* pBufSize);
     int returnStream(VideoStreamDataInfo *pDataInfo);
-    int flushStream(VideoStreamDataInfo *pDataInfo);
+    int flushStream(VideoStreamDataInfo *pDataInfo, bool bFlush);
     FramePicInfo* requestEmptyFramePicBuf();
     int addFramePic(FramePicInfo* pFramePic);
     void expandNaluList(FramePicInfo* pFramePic);
